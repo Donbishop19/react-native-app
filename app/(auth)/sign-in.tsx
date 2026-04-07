@@ -3,7 +3,6 @@ import React from 'react'
 import {Link} from "expo-router";
 
 const SignIn = () => {
-    // @ts-ignore
     return (
         <View>
             <Text>SignIn</Text>
