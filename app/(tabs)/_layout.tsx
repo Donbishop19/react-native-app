@@ -3,7 +3,7 @@ import {tabs} from "@/constants/data";
 import {View} from "react-native";
 import  { colors, components } from "@/constants/theme";
 import clsx from "clsx";
-import {Image} from "expo-image";
+import {Image} from "react-native";
 import  { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
