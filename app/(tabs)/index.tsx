@@ -1,5 +1,5 @@
 import "@/global.css"
-import {Text, Image, View, FlatList} from "react-native";
+import {Text, Image, View, FlatList, ScrollView} from "react-native";
 import {Link} from "expo-router";
 import {SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
@@ -49,16 +49,18 @@ export default function App() {
                             <View className='mb-5'>
                                 <ListHeading title="Upcoming" />
 
-                                <FlatList
-                                    data={UPCOMING_SUBSCRIPTIONS}
-                                    renderItem={({ item }) => (
-                                        <UpcomingSubscriptionCard {...item} />
-                                    )}
-                                    keyExtractor={(item) => item.id}
+                                <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
-                                    ListEmptyComponent={<Text className="home-empty-state">No upcoming renewal yet.</Text>}
-                                />
+                                >
+                                    {UPCOMING_SUBSCRIPTIONS.length > 0 ? (
+                                        UPCOMING_SUBSCRIPTIONS.map((item) => (
+                                            <UpcomingSubscriptionCard key={item.id} {...item} />
+                                        ))
+                                    ) : (
+                                        <Text className="home-empty-state">No upcoming renewal yet.</Text>
+                                    )}
+                                </ScrollView>
                             </View>
 
                             <ListHeading title="All Subscriptions" />

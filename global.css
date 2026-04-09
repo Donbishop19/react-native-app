@@ -17,7 +17,7 @@
     --color-destructive: #dc2626;
     --color-subscription: #8fd1bd;
 
-    --font-sans: sans-regular;
+    --font-sans: Sans-regular;
     --font-sans-light: sans-light;
     --font-sans-medium: sans-medium;
     --font-sans-semibold: sans-semibold;
@@ -44,12 +44,6 @@
     --spacing-24: 96px;
     --spacing-30: 120px;
 
-    --font-sans: Sans-regular;
-    --font-sans-light: Sans-light;
-    --font-sans-medium: Sans-medium;
-    --font-sans-semibold: Sans-semibold;
-    --font-sans-bold: Sans-bold;
-    --font-sans-extrabold: Sans-extrabold;
 }
 
 @layer components {
