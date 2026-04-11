@@ -11,6 +11,8 @@ const SignIn = () => {
     const [emailAddress, setEmailAddress] = useState('');
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
+    const [mfaCode, setMfaCode] = useState('');
+    const [mfaFactorType, setMfaFactorType] = useState<'phone_code' | 'totp' | 'backup_code' | null>(null);
     const [localErrors, setLocalErrors] = useState<{
         email?: string;
         password?: string;
@@ -72,8 +74,29 @@ const SignIn = () => {
                 },
             });
         } else if (signIn.status === 'needs_second_factor') {
-            // Handle MFA if needed
-            console.log('MFA required');
+            // Handle MFA - determine which factor to use
+            const phoneCodeFactor = signIn.supportedSecondFactors.find(
+                (factor) => factor.strategy === 'phone_code',
+            );
+            const totpFactor = signIn.supportedSecondFactors.find(
+                (factor) => factor.strategy === 'totp',
+            );
+            const backupCodeFactor = signIn.supportedSecondFactors.find(
+                (factor) => factor.strategy === 'backup_code',
+            );
+
+            // Prioritize: SMS > TOTP > Backup codes
+            if (phoneCodeFactor) {
+                setMfaFactorType('phone_code');
+                // Send SMS code
+                await signIn.mfa.sendPhoneCode({ phoneNumberId: phoneCodeFactor.phoneNumberId });
+            } else if (totpFactor) {
+                setMfaFactorType('totp');
+            } else if (backupCodeFactor) {
+                setMfaFactorType('backup_code');
+            } else {
+                console.error('No supported second factor found');
+            }
         } else if (signIn.status === 'needs_client_trust') {
             const emailCodeFactor = signIn.supportedSecondFactors.find(
                 (factor) => factor.strategy === 'email_code',
@@ -111,9 +134,173 @@ const SignIn = () => {
         }
     };
 
+    const handleVerifyMfa = async () => {
+        try {
+            if (mfaFactorType === 'phone_code') {
+                await signIn.mfa.verifyPhoneCode({ code: mfaCode });
+            } else if (mfaFactorType === 'totp') {
+                await signIn.mfa.verifyTOTP({ code: mfaCode });
+            } else if (mfaFactorType === 'backup_code') {
+                await signIn.mfa.verifyBackupCode({ code: mfaCode });
+            }
+
+            if (signIn.status === 'complete') {
+                await signIn.finalize({
+                    navigate: ({ session, decorateUrl }) => {
+                        if (session?.currentTask) {
+                            console.log(session?.currentTask);
+                            return;
+                        }
+
+                        const url = decorateUrl('/');
+                        if (url.startsWith('http')) {
+                            window.location.href = url;
+                        } else {
+                            router.push(url as Href);
+                        }
+                    },
+                });
+            } else {
+                console.error('MFA verification not complete:', signIn);
+            }
+        } catch (error) {
+            console.error('MFA verification failed:', error);
+        }
+    };
+
     // Check if form is valid
     const isFormValid = emailAddress.length > 0 && password.length > 0 && !localErrors.email;
     const isLoading = fetchStatus === 'fetching';
+
+    // MFA verification screen
+    if (signIn.status === 'needs_second_factor' && mfaFactorType) {
+        const getMfaTitle = () => {
+            if (mfaFactorType === 'phone_code') return 'Enter SMS Code';
+            if (mfaFactorType === 'totp') return 'Enter Authenticator Code';
+            if (mfaFactorType === 'backup_code') return 'Enter Backup Code';
+            return 'Two-Factor Authentication';
+        };
+
+        const getMfaSubtitle = () => {
+            if (mfaFactorType === 'phone_code') return 'We sent a verification code to your phone';
+            if (mfaFactorType === 'totp') return 'Enter the code from your authenticator app';
+            if (mfaFactorType === 'backup_code') return 'Enter one of your backup codes';
+            return 'Please verify your identity';
+        };
+
+        return (
+            <SafeAreaView className="auth-safe-area">
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    className="auth-screen"
+                >
+                    <ScrollView
+                        className="auth-scroll"
+                        contentContainerStyle={{ flexGrow: 1 }}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View className="auth-content">
+                            {/* Brand Block */}
+                            <View className="auth-brand-block">
+                                <View className="auth-logo-wrap">
+                                    <View className="auth-logo-mark">
+                                        <Text className="auth-logo-mark-text">S</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="auth-wordmark">Subtrack</Text>
+                                        <Text className="auth-wordmark-sub">Subscriptions</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Title */}
+                            <View className="items-center mt-6 mb-3">
+                                <Text className="auth-title">{getMfaTitle()}</Text>
+                                <Text className="auth-subtitle">{getMfaSubtitle()}</Text>
+                            </View>
+
+                            {/* Card with Form */}
+                            <View className="auth-card">
+                                <View className="auth-form">
+                                    {/* MFA Code Field */}
+                                    <View className="auth-field">
+                                        <Text className="auth-label">
+                                            {mfaFactorType === 'totp' || mfaFactorType === 'phone_code'
+                                                ? 'Verification Code'
+                                                : 'Backup Code'}
+                                        </Text>
+                                        <TextInput
+                                            className="auth-input"
+                                            value={mfaCode}
+                                            placeholder={mfaFactorType === 'backup_code' ? 'Enter backup code' : 'Enter 6-digit code'}
+                                            placeholderTextColor="rgba(0, 0, 0, 0.3)"
+                                            onChangeText={setMfaCode}
+                                            keyboardType={mfaFactorType === 'backup_code' ? 'default' : 'number-pad'}
+                                            maxLength={mfaFactorType === 'backup_code' ? 20 : 6}
+                                            autoFocus
+                                        />
+                                    </View>
+
+                                    {/* Verify Button */}
+                                    <Pressable
+                                        className={`auth-button ${isLoading ? 'auth-button-disabled' : ''}`}
+                                        onPress={handleVerifyMfa}
+                                        disabled={isLoading || mfaCode.length < (mfaFactorType === 'backup_code' ? 1 : 6)}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator color="#081126" />
+                                        ) : (
+                                            <Text className="auth-button-text">Verify</Text>
+                                        )}
+                                    </Pressable>
+
+                                    {/* Resend Button (only for SMS) */}
+                                    {mfaFactorType === 'phone_code' && (
+                                        <Pressable
+                                            className="auth-secondary-button"
+                                            onPress={async () => {
+                                                const phoneCodeFactor = signIn.supportedSecondFactors.find(
+                                                    (factor) => factor.strategy === 'phone_code',
+                                                );
+                                                if (phoneCodeFactor) {
+                                                    await signIn.mfa.sendPhoneCode({ phoneNumberId: phoneCodeFactor.phoneNumberId });
+                                                }
+                                            }}
+                                        >
+                                            <Text className="auth-secondary-button-text">Send New Code</Text>
+                                        </Pressable>
+                                    )}
+
+                                    {/* Use Backup Code option (if TOTP is active) */}
+                                    {mfaFactorType === 'totp' && signIn.supportedSecondFactors.find(f => f.strategy === 'backup_code') && (
+                                        <Pressable
+                                            className="auth-secondary-button"
+                                            onPress={() => setMfaFactorType('backup_code')}
+                                        >
+                                            <Text className="auth-secondary-button-text">Use Backup Code</Text>
+                                        </Pressable>
+                                    )}
+
+                                    {/* Start Over Button */}
+                                    <Pressable
+                                        className="auth-secondary-button"
+                                        onPress={() => {
+                                            signIn.reset();
+                                            setMfaFactorType(null);
+                                            setMfaCode('');
+                                        }}
+                                    >
+                                        <Text className="auth-secondary-button-text">Start Over</Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        );
+    }
 
     // Verification screen (for client trust / MFA)
     if (signIn.status === 'needs_client_trust') {

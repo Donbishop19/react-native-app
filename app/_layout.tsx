@@ -30,11 +30,17 @@ export default function RootLayout() {
       }
   }, [fontsLoaded])
 
-  if (!fontsLoaded) return  null;
-
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <Stack screenOptions={{ headerShown: false }} />
+    <ClerkProvider
+      publishableKey={publishableKey}
+      tokenCache={tokenCache}
+      taskUrls={{
+        signUp: '/(auth)/sign-up/task',
+        signIn: '/(auth)/sign-in/task',
+        default: '/'
+      }}
+    >
+      {fontsLoaded ? <Stack screenOptions={{ headerShown: false }} /> : null}
     </ClerkProvider>
   );
 }

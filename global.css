@@ -18,11 +18,13 @@
     --color-subscription: #8fd1bd;
 
     --font-sans: Sans-regular;
+    /* stylelint-disable value-keyword-case */
     --font-sans-light: Sans-light;
     --font-sans-medium: Sans-medium;
     --font-sans-semibold: Sans-semibold;
     --font-sans-bold: Sans-bold;
     --font-sans-extrabold: Sans-extrabold;
+    /* stylelint-enable value-keyword-case */
 
     --spacing-0: 0px;
     --spacing-1: 4px;
