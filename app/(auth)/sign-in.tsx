@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import React, { useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,10 +13,25 @@ const SignIn = () => {
     const [code, setCode] = useState('');
     const [mfaCode, setMfaCode] = useState('');
     const [mfaFactorType, setMfaFactorType] = useState<'phone_code' | 'totp' | 'backup_code' | null>(null);
+    const [isResendingCode, setIsResendingCode] = useState(false);
+    const [isResendingEmailCode, setIsResendingEmailCode] = useState(false);
     const [localErrors, setLocalErrors] = useState<{
         email?: string;
         password?: string;
     }>({});
+
+    // Platform-safe navigation helper
+    const navigateToUrl = (url: string) => {
+        if (url.startsWith('http')) {
+            if (Platform.OS === 'web') {
+                window.location.href = url;
+            } else {
+                Linking.openURL(url);
+            }
+        } else {
+            router.push(url as Href);
+        }
+    };
 
     // Validation helpers
     const validateEmail = (email: string): boolean => {
@@ -66,11 +81,7 @@ const SignIn = () => {
                     }
 
                     const url = decorateUrl('/');
-                    if (url.startsWith('http')) {
-                        window.location.href = url;
-                    } else {
-                        router.push(url as Href);
-                    }
+                    navigateToUrl(url);
                 },
             });
         } else if (signIn.status === 'needs_second_factor') {
@@ -122,11 +133,7 @@ const SignIn = () => {
                     }
 
                     const url = decorateUrl('/');
-                    if (url.startsWith('http')) {
-                        window.location.href = url;
-                    } else {
-                        router.push(url as Href);
-                    }
+                    navigateToUrl(url);
                 },
             });
         } else {
@@ -153,11 +160,7 @@ const SignIn = () => {
                         }
 
                         const url = decorateUrl('/');
-                        if (url.startsWith('http')) {
-                            window.location.href = url;
-                        } else {
-                            router.push(url as Href);
-                        }
+                        navigateToUrl(url);
                     },
                 });
             } else {
@@ -165,6 +168,33 @@ const SignIn = () => {
             }
         } catch (error) {
             console.error('MFA verification failed:', error);
+        }
+    };
+
+    const handleResendMfaCode = async () => {
+        setIsResendingCode(true);
+        try {
+            const phoneCodeFactor = signIn.supportedSecondFactors.find(
+                (factor) => factor.strategy === 'phone_code',
+            );
+            if (phoneCodeFactor) {
+                await signIn.mfa.sendPhoneCode({ phoneNumberId: phoneCodeFactor.phoneNumberId });
+            }
+        } catch (error) {
+            console.error('Failed to resend MFA code:', error);
+        } finally {
+            setIsResendingCode(false);
+        }
+    };
+
+    const handleResendEmailCode = async () => {
+        setIsResendingEmailCode(true);
+        try {
+            await signIn.mfa.sendEmailCode();
+        } catch (error) {
+            console.error('Failed to resend email code:', error);
+        } finally {
+            setIsResendingEmailCode(false);
         }
     };
 
@@ -259,16 +289,14 @@ const SignIn = () => {
                                     {mfaFactorType === 'phone_code' && (
                                         <Pressable
                                             className="auth-secondary-button"
-                                            onPress={async () => {
-                                                const phoneCodeFactor = signIn.supportedSecondFactors.find(
-                                                    (factor) => factor.strategy === 'phone_code',
-                                                );
-                                                if (phoneCodeFactor) {
-                                                    await signIn.mfa.sendPhoneCode({ phoneNumberId: phoneCodeFactor.phoneNumberId });
-                                                }
-                                            }}
+                                            onPress={handleResendMfaCode}
+                                            disabled={isResendingCode}
                                         >
-                                            <Text className="auth-secondary-button-text">Send New Code</Text>
+                                            {isResendingCode ? (
+                                                <ActivityIndicator color="#081126" size="small" />
+                                            ) : (
+                                                <Text className="auth-secondary-button-text">Send New Code</Text>
+                                            )}
                                         </Pressable>
                                     )}
 
@@ -376,9 +404,14 @@ const SignIn = () => {
                                     {/* Resend Button */}
                                     <Pressable
                                         className="auth-secondary-button"
-                                        onPress={() => signIn.mfa.sendEmailCode()}
+                                        onPress={handleResendEmailCode}
+                                        disabled={isResendingEmailCode}
                                     >
-                                        <Text className="auth-secondary-button-text">Send New Code</Text>
+                                        {isResendingEmailCode ? (
+                                            <ActivityIndicator color="#081126" size="small" />
+                                        ) : (
+                                            <Text className="auth-secondary-button-text">Send New Code</Text>
+                                        )}
                                     </Pressable>
 
                                     {/* Start Over Button */}

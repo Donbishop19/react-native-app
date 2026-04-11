@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import React, { useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,9 +8,23 @@ const SignUp = () => {
     const { signUp, errors, fetchStatus } = useSignUp();
     const router = useRouter();
 
+    // Platform-safe navigation helper
+    const navigateToUrl = (url: string) => {
+        if (url.startsWith('http')) {
+            if (Platform.OS === 'web') {
+                window.location.href = url;
+            } else {
+                Linking.openURL(url);
+            }
+        } else {
+            router.push(url as Href);
+        }
+    };
+
     const [emailAddress, setEmailAddress] = useState('');
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
+    const [isResendingCode, setIsResendingCode] = useState(false);
     const [localErrors, setLocalErrors] = useState<{
         email?: string;
         password?: string;
@@ -86,15 +100,22 @@ const SignUp = () => {
                     }
 
                     const url = decorateUrl('/');
-                    if (url.startsWith('http')) {
-                        window.location.href = url;
-                    } else {
-                        router.push(url as Href);
-                    }
+                    navigateToUrl(url);
                 },
             });
         } else {
             console.error('Sign-up attempt not complete:', signUp);
+        }
+    };
+
+    const handleResendCode = async () => {
+        setIsResendingCode(true);
+        try {
+            await signUp.verifications.sendEmailCode();
+        } catch (error) {
+            console.error('Failed to resend verification code:', error);
+        } finally {
+            setIsResendingCode(false);
         }
     };
 
@@ -180,9 +201,14 @@ const SignUp = () => {
                                     {/* Resend Button */}
                                     <Pressable
                                         className="auth-secondary-button"
-                                        onPress={() => signUp.verifications.sendEmailCode()}
+                                        onPress={handleResendCode}
+                                        disabled={isResendingCode}
                                     >
-                                        <Text className="auth-secondary-button-text">Send New Code</Text>
+                                        {isResendingCode ? (
+                                            <ActivityIndicator color="#081126" size="small" />
+                                        ) : (
+                                            <Text className="auth-secondary-button-text">Send New Code</Text>
+                                        )}
                                     </Pressable>
                                 </View>
                             </View>
