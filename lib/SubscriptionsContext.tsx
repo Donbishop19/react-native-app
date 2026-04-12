@@ -12,7 +12,7 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
     const [subscriptions, setSubscriptions] = useState<Subscription[]>(HOME_SUBSCRIPTIONS);
 
     const addSubscription = (subscription: Subscription) => {
-        setSubscriptions([subscription, ...subscriptions]);
+        setSubscriptions(prev => [subscription, ...prev]);
     };
 
     return (

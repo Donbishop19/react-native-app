@@ -59,12 +59,11 @@ const CreateSubscriptionModal = ({ visible, onClose, onCreateSubscription }: Cre
             id: `sub-${Date.now()}`,
             name: name.trim(),
             price: priceValue,
-            frequency,
             category: category || 'Other',
             status: 'active',
             startDate,
             renewalDate,
-            icon: icons.plus,
+            icon: icons.wallet,
             billing: frequency,
             currency: 'USD',
             color: CATEGORY_COLORS[category] || CATEGORY_COLORS['Other']

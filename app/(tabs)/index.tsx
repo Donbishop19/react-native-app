@@ -28,7 +28,12 @@ const HomeListHeader = ({ onAddPress }: HomeListHeaderProps) => (
                 <Text className='home-user-name'>{HOME_USER.name}</Text>
             </View>
 
-            <Pressable onPress={onAddPress}>
+            <Pressable
+                onPress={onAddPress}
+                accessibilityRole="button"
+                accessibilityLabel="Add new subscription"
+                accessibilityHint="Opens a form to create a new subscription"
+            >
                 <Image source={icons.add} className='home-add-icon' />
             </Pressable>
         </View>
