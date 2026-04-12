@@ -5,6 +5,7 @@ import {useFonts} from "expo-font";
 import {useEffect} from "react";
 import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
+import { PostHogProvider } from 'posthog-react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -12,6 +13,13 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 if (!publishableKey) {
   throw new Error('Add your Clerk Publishable Key to the .env file');
+}
+
+const posthogKey = process.env.EXPO_PUBLIC_POSTHOG_KEY;
+const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+
+if (!posthogKey) {
+  console.warn('PostHog API key not found in environment variables. Analytics will be disabled.');
 }
 
 export default function RootLayout() {
@@ -30,7 +38,7 @@ export default function RootLayout() {
       }
   }, [fontsLoaded])
 
-  return (
+  const AppContent = (
     <ClerkProvider
       publishableKey={publishableKey}
       tokenCache={tokenCache}
@@ -42,5 +50,16 @@ export default function RootLayout() {
     >
       {fontsLoaded ? <Stack screenOptions={{ headerShown: false }} /> : null}
     </ClerkProvider>
+  );
+
+  return posthogKey ? (
+    <PostHogProvider
+      apiKey={posthogKey}
+      options={{ host: posthogHost }}
+    >
+      {AppContent}
+    </PostHogProvider>
+  ) : (
+    AppContent
   );
 }

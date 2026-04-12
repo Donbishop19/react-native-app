@@ -1,20 +1,26 @@
 import "@/global.css"
-import {Text, Image, View, FlatList, ScrollView} from "react-native";
+import {Text, Image, View, FlatList, ScrollView, Pressable} from "react-native";
 import {SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import images from "@/constants/images";
-import {HOME_BALANCE, HOME_USER, UPCOMING_SUBSCRIPTIONS, HOME_SUBSCRIPTIONS} from "@/constants/data";
+import {HOME_BALANCE, HOME_USER, UPCOMING_SUBSCRIPTIONS} from "@/constants/data";
 import {icons} from "@/constants/icons";
 import {formatCurrency} from "@/lib/utils";
 import dayjs from "dayjs";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import {useState} from "react";
+import { useSubscriptions } from "@/lib/SubscriptionsContext";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
-const HomeListHeader = () => (
+interface HomeListHeaderProps {
+    onAddPress: () => void;
+}
+
+const HomeListHeader = ({ onAddPress }: HomeListHeaderProps) => (
     <>
         <View className="home-header">
             <View className='home-user'>
@@ -22,7 +28,14 @@ const HomeListHeader = () => (
                 <Text className='home-user-name'>{HOME_USER.name}</Text>
             </View>
 
-            <Image source={icons.add} className='home-add-icon' />
+            <Pressable
+                onPress={onAddPress}
+                accessibilityRole="button"
+                accessibilityLabel="Add new subscription"
+                accessibilityHint="Opens a form to create a new subscription"
+            >
+                <Image source={icons.add} className='home-add-icon' />
+            </Pressable>
         </View>
 
         <View className="home-balance-card">
@@ -61,12 +74,15 @@ const HomeListHeader = () => (
 
 export default function App() {
     const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<string | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const { subscriptions, addSubscription } = useSubscriptions();
+
     return (
         <SafeAreaView className='flex-1 bg-background p-5'>
                 <FlatList
 
-                    ListHeaderComponent={HomeListHeader}
-                    data={HOME_SUBSCRIPTIONS}
+                    ListHeaderComponent={() => <HomeListHeader onAddPress={() => setModalVisible(true)} />}
+                    data={subscriptions}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item}) => (
                         <SubscriptionCard
@@ -82,6 +98,11 @@ export default function App() {
                     contentContainerClassName="pb-30"
                 />
 
+                <CreateSubscriptionModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    onCreateSubscription={addSubscription}
+                />
         </SafeAreaView>
     );
 }
